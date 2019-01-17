@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="point_cloud_fusion" type="point_cloud_fusion_node" name="point_cloud_fusion_node" output="screen"/>
+</launch>
