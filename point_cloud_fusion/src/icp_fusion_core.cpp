@@ -35,15 +35,17 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 //Set the maximum distance between two correspondences (src<->tgt) to 10cm
 	icp.setMaxCorrespondenceDistance (0.1);
 //Difference between two iterations before and after
-	icp.setEuclideanFitnessEpsilon (0.5);
+	//icp.setEuclideanFitnessEpsilon (0.5);
 //set the maximum number of iterations
-	icp.setMaximumIterations (10); 
+	icp.setMaximumIterations (20); 
 
 
 	icp.setInputSource (in);   // set source point cloud
 	icp.setInputTarget (out); //set target point cloud
 
-	icp.align (*icp_result);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr result(new pcl::PointCloud<pcl::PointXYZRGB>);
+	icp.align (*result);
+	icp_result = result;
 }
 
 // call back the point cloud and filter it, then use ICP to fusion point cloud to generate map 
@@ -52,8 +54,6 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr filtered_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr icp_result(new pcl::PointCloud<pcl::PointXYZRGB>);
-
 // transform the pointcloud from ros type to pcl type
 	pcl::fromROSMsg(*input_cloud, *current_point_cloud);
 
@@ -61,7 +61,7 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 //use voxel to filter the pointcloud, which from the sensor_msgs::pointcloud2
 	pcl::VoxelGrid<pcl::PointXYZRGB> vg;
 	vg.setInputCloud(current_point_cloud);
-	vg.setLeafSize(0.01f, 0.01f, 0.01f); 
+	vg.setLeafSize(0.05f, 0.05f, 0.05f); 
 	vg.filter(*filtered_point_cloud);
 	
 	counter = counter + 1 ;
