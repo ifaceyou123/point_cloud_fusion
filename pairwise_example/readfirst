@@ -1,0 +1,9 @@
+run pairwise
+
+	cd build 
+	./pairwise_incremental_registration pcl_2_pcd*.pcd
+
+viewer
+
+	pcl_viewer pcl_2_pcd[1-9].pcd
+	pcl_viewer [1-8].pcd
