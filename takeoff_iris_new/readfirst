@@ -1,0 +1,4 @@
+run the mission 
+
+	cd catkin_ws/src/takeoff_iris_new
+	roslaunch takeoff_iris_new mission.launch
