@@ -37,12 +37,12 @@
 
 /* \author Radu Bogdan Rusu
  * adaptation Raphael Favier*/
-
+#include <iostream>
 #include <boost/make_shared.hpp>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_representation.h>
-
+#include <vector>
 #include <pcl/io/pcd_io.h>
 
 #include <pcl/filters/voxel_grid.h>
@@ -53,6 +53,9 @@
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
 #include <pcl/registration/transforms.h>
+
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/extract_indices.h>
 
 #include <pcl/visualization/pcl_visualizer.h>
 
@@ -201,16 +204,45 @@ void loadData (int argc, char **argv, std::vector<PCD, Eigen::aligned_allocator<
   */
 void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt, PointCloud::Ptr output, Eigen::Matrix4f &final_transform, bool downsample = false)
 {
-  //
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_p(new pcl::PointCloud<pcl::PointXYZ>);
   // Downsample for consistency and speed
   // \note enable this for large datasets
   PointCloud::Ptr src (new PointCloud);
   PointCloud::Ptr tgt (new PointCloud);
   pcl::VoxelGrid<PointT> grid;
+  
+  std::vector<int> index;
+
+  cloud_src->width = 640;
+  cloud_src->height = 480;
+  std::cerr << "PointCloud before filtering: " << cloud_src->width * cloud_src->height << " data points." << std::endl;
+  for( size_t i = 40; i < 439; ++i)
+     {
+	for( size_t j = 60; j < 579; ++j)
+	{
+	   index.push_back(i*40+j);
+        }
+     }
+
+  boost::shared_ptr<std::vector<int> > index_ptr = boost::make_shared<std::vector<int> >(index);
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+  
+  extract.setInputCloud (cloud_src);
+  extract.setIndices (index_ptr);
+  extract.setNegative (false);
+  extract.filter (*cloud_p);
+  
+  std::cerr << "PointCloud after filtering: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+
+  //std::stringstream ss;
+  //ss << i << ".pcd";
+  //pcl::io::savePCDFile (ss.str (), *cloud_p, true);
+
   if (downsample)
   {
-    grid.setLeafSize (0.05, 0.05, 0.05);
-    grid.setInputCloud (cloud_src);
+    grid.setLeafSize (0.1, 0.1, 0.1);
+    grid.setInputCloud (cloud_p);
     grid.filter (*src);
 
     grid.setInputCloud (cloud_tgt);
@@ -218,7 +250,7 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   }
   else
   {
-    src = cloud_src;
+    src = cloud_p;
     tgt = cloud_tgt;
   }
 
@@ -253,7 +285,7 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   reg.setTransformationEpsilon (1e-6);
   // Set the maximum distance between two correspondences (src<->tgt) to 10cm
   // Note: adjust this based on the size of your datasets
-  reg.setMaxCorrespondenceDistance (0.1);  
+  reg.setMaxCorrespondenceDistance (0.5);  
   // Set the point representation
   reg.setPointRepresentation (boost::make_shared<const MyPointRepresentation> (point_representation));
 
@@ -267,31 +299,31 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity (), prev, targetToSource;
   PointCloudWithNormals::Ptr reg_result = points_with_normals_src;
   reg.setMaximumIterations (30);
-  for (int i = 0; i < 30; ++i)
-  {
-    PCL_INFO ("Iteration Nr. %d.\n", i);
+  //for (int i = 0; i < 30; ++i)
+  //{
+    //PCL_INFO ("Iteration Nr. %d.\n", i);
 
     // save cloud for visualization purpose
-    points_with_normals_src = reg_result;
+    //points_with_normals_src = reg_result;
 
     // Estimate
-    reg.setInputSource (points_with_normals_src);
-    reg.align (*reg_result);
+    //reg.setInputSource (points_with_normals_src);
+  reg.align (*reg_result);
 
 		//accumulate transformation between each Iteration
-    Ti = reg.getFinalTransformation () * Ti;
+  Ti = reg.getFinalTransformation () * Ti;
 
 		//if the difference between this transformation and the previous one
 		//is smaller than the threshold, refine the process by reducing
 		//the maximal correspondence distance
-    if (fabs ((reg.getLastIncrementalTransformation () - prev).sum ()) < reg.getTransformationEpsilon ())
-      reg.setMaxCorrespondenceDistance (reg.getMaxCorrespondenceDistance () - 0.001);
+    //if (fabs ((reg.getLastIncrementalTransformation () - prev).sum ()) < reg.getTransformationEpsilon ())
+     // reg.setMaxCorrespondenceDistance (reg.getMaxCorrespondenceDistance () - 0.001);
     
-    prev = reg.getLastIncrementalTransformation ();
+    //prev = reg.getLastIncrementalTransformation ();
 
     // visualize current state
     showCloudsRight(points_with_normals_tgt, points_with_normals_src);
-  }
+  //}
 
 	//
   // Get the transformation from target to source
@@ -309,14 +341,14 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   p->addPointCloud (output, cloud_tgt_h, "target", vp_2);
   p->addPointCloud (cloud_src, cloud_src_h, "source", vp_2);
 
-	//PCL_INFO ("Press q to continue the registration.\n");
-  //p->spin ();
+	PCL_INFO ("Press q to continue the registration.\n");
+  p->spin ();
 
   p->removePointCloud ("source"); 
   p->removePointCloud ("target");
 
   //add the source to the transformed target
-  *output += *cloud_src;
+  //*output += *cloud_src;
   
   final_transform = targetToSource;
  }
@@ -360,10 +392,11 @@ int main (int argc, char** argv)
 
     //transform current pair into the global transform
     pcl::transformPointCloud (*temp, *result, GlobalTransform);
-
+    std::cout << pairTransform << std::endl;
     //update the global transform
     GlobalTransform = GlobalTransform * pairTransform;
 
+    std::cout << GlobalTransform << std::endl;
 		//save aligned pair, transformed into the first cloud's frame
     std::stringstream ss;
     ss << i << ".pcd";
