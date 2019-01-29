@@ -1,9 +1,11 @@
 run pairwise
 
 	cd build 
-	./pairwise_incremental_registration pcl_2_pcd*.pcd
+	./pairwise_incremental_registration pcl_2_pcd1.pcd pcl_2_pcd2.pcd pcl_2_pcd3.pcd pcl_2_pcd4.pcd pcl_2_pcd5.pcd pcl_2_pcd6.pcd pcl_2_pcd7.pcd pcl_2_pcd8.pcd pcl_2_pcd9.pcd pcl_2_pcd10.pcd pcl_2_pcd11.pcd pcl_2_pcd12.pcd pcl_2_pcd13.pcd pcl_2_pcd14.pcd pcl_2_pcd15.pcd pcl_2_pcd16.pcd pcl_2_pcd17.pcd pcl_2_pcd18.pcd pcl_2_pcd19.pcd pcl_2_pcd20.pcd pcl_2_pcd21.pcd pcl_2_pcd22.pcd pcl_2_pcd23.pcd pcl_2_pcd24.pcd pcl_2_pcd25.pcd pcl_2_pcd26.pcd pcl_2_pcd27.pcd pcl_2_pcd28.pcd pcl_2_pcd29.pcd pcl_2_pcd30.pcd
+
 
 viewer
 
-	pcl_viewer pcl_2_pcd[1-9].pcd
-	pcl_viewer [1-8].pcd
+	pcl_viewer pcl_2_pcd1.pcd pcl_2_pcd2.pcd pcl_2_pcd3.pcd pcl_2_pcd4.pcd pcl_2_pcd5.pcd pcl_2_pcd6.pcd pcl_2_pcd7.pcd pcl_2_pcd8.pcd pcl_2_pcd9.pcd pcl_2_pcd10.pcd pcl_2_pcd11.pcd pcl_2_pcd12.pcd pcl_2_pcd13.pcd pcl_2_pcd14.pcd pcl_2_pcd15.pcd pcl_2_pcd16.pcd pcl_2_pcd17.pcd pcl_2_pcd18.pcd pcl_2_pcd19.pcd pcl_2_pcd20.pcd pcl_2_pcd21.pcd pcl_2_pcd22.pcd pcl_2_pcd23.pcd pcl_2_pcd24.pcd pcl_2_pcd25.pcd pcl_2_pcd26.pcd pcl_2_pcd27.pcd pcl_2_pcd28.pcd pcl_2_pcd29.pcd pcl_2_pcd30.pcd
+
+	pcl_viewer 1.pcd 2.pcd 3.pcd 4.pcd 5.pcd 6.pcd 7.pcd 8.pcd 9.pcd 10.pcd 11.pcd 12.pcd 13.pcd 14.pcd 15.pcd 16.pcd 17.pcd 18.pcd 19.pcd 20.pcd 21.pcd 22.pcd 23.pcd 24.pcd 25.pcd 26.pcd 27.pcd 28.pcd 29.pcd 30.pcd

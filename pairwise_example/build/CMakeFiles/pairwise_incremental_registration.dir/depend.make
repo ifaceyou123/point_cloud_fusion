@@ -255,8 +255,12 @@ CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registrati
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/features/impl/normal_3d.hpp
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/features/normal_3d.h
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/boost.h
+CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/extract_indices.h
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/filter.h
+CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/filter_indices.h
+CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/impl/extract_indices.hpp
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/impl/filter.hpp
+CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/impl/filter_indices.hpp
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/impl/voxel_grid.hpp
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/filters/voxel_grid.h
 CMakeFiles/pairwise_incremental_registration.dir/pairwise_incremental_registration.cpp.o: /usr/include/pcl-1.7/pcl/for_each_type.h

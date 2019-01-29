@@ -65,8 +65,6 @@ using pcl::visualization::PointCloudColorHandlerCustom;
 //convenient typedefs
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloud;
-typedef pcl::PointNormal PointNormalT;
-typedef pcl::PointCloud<PointNormalT> PointCloudWithNormals;
 
 // This is a tutorial so we can afford having global variables 
 	//our visualizer
@@ -88,29 +86,6 @@ struct PCDComparator
   bool operator () (const PCD& p1, const PCD& p2)
   {
     return (p1.f_name < p2.f_name);
-  }
-};
-
-
-// Define a new point representation for < x, y, z, curvature >
-class MyPointRepresentation : public pcl::PointRepresentation <PointNormalT>
-{
-  using pcl::PointRepresentation<PointNormalT>::nr_dimensions_;
-public:
-  MyPointRepresentation ()
-  {
-    // Define the number of dimensions
-    nr_dimensions_ = 4;
-  }
-
-  // Override the copyToFloatArray method to define our feature vector
-  virtual void copyToFloatArray (const PointNormalT &p, float * out) const
-  {
-    // < x, y, z, curvature >
-    out[0] = p.x;
-    out[1] = p.y;
-    out[2] = p.z;
-    out[3] = p.curvature;
   }
 };
 
@@ -138,23 +113,16 @@ void showCloudsLeft(const PointCloud::Ptr cloud_target, const PointCloud::Ptr cl
 /** \brief Display source and target on the second viewport of the visualizer
  *
  */
-void showCloudsRight(const PointCloudWithNormals::Ptr cloud_target, const PointCloudWithNormals::Ptr cloud_source)
+void showCloudsRight(const PointCloud::Ptr cloud_target, const PointCloud::Ptr cloud_source)
 {
   p->removePointCloud ("source");
   p->removePointCloud ("target");
 
+  PointCloudColorHandlerCustom<PointT> tgt_handler (cloud_target, 0, 255, 0);
+  PointCloudColorHandlerCustom<PointT> src_handler (cloud_source, 255, 0, 0);
 
-  PointCloudColorHandlerGenericField<PointNormalT> tgt_color_handler (cloud_target, "curvature");
-  if (!tgt_color_handler.isCapable ())
-      PCL_WARN ("Cannot create curvature color handler!");
-
-  PointCloudColorHandlerGenericField<PointNormalT> src_color_handler (cloud_source, "curvature");
-  if (!src_color_handler.isCapable ())
-      PCL_WARN ("Cannot create curvature color handler!");
-
-
-  p->addPointCloud (cloud_target, tgt_color_handler, "target", vp_2);
-  p->addPointCloud (cloud_source, src_color_handler, "source", vp_2);
+  p->addPointCloud (cloud_target, tgt_handler, "target", vp_2);
+  p->addPointCloud (cloud_source, src_handler, "source", vp_2);
 
   p->spinOnce();
 }
@@ -185,10 +153,6 @@ void loadData (int argc, char **argv, std::vector<PCD, Eigen::aligned_allocator<
       PCD m;
       m.f_name = argv[i];
       pcl::io::loadPCDFile (argv[i], *m.cloud);
-      //remove NAN points from the cloud
-      std::vector<int> indices;
-      pcl::removeNaNFromPointCloud(*m.cloud,*m.cloud, indices);
-
       models.push_back (m);
     }
   }
@@ -212,16 +176,20 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   PointCloud::Ptr tgt (new PointCloud);
   pcl::VoxelGrid<PointT> grid;
   
+// creat a indices 
   std::vector<int> index;
 
   cloud_src->width = 640;
   cloud_src->height = 480;
-  std::cerr << "PointCloud before filtering: " << cloud_src->width * cloud_src->height << " data points." << std::endl;
-  for( size_t i = 40; i < 439; ++i)
+
+  std::cerr << "PointCloud src before filtering: " << cloud_src->points.size() << " data points." << std::endl;
+  std::cerr << "PointCloud tgt before filtering: " << cloud_tgt->points.size() << " data points." << std::endl;
+
+  for( size_t i = 120; i < 360; ++i)
      {
-	for( size_t j = 60; j < 579; ++j)
+	for( size_t j = 160; j < 480; ++j)
 	{
-	   index.push_back(i*40+j);
+	   index.push_back(i*640+j);
         }
      }
 
@@ -230,23 +198,28 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   
   extract.setInputCloud (cloud_src);
   extract.setIndices (index_ptr);
+// The indices_rem array indexes all points of cloud_in that are indexed by indices_in
   extract.setNegative (false);
   extract.filter (*cloud_p);
   
-  std::cerr << "PointCloud after filtering: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+  std::cerr << "PointCloud before removeNaN indices: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
 
-  //std::stringstream ss;
-  //ss << i << ".pcd";
-  //pcl::io::savePCDFile (ss.str (), *cloud_p, true);
+
+  std::vector<int> indices;
+  pcl::removeNaNFromPointCloud(*cloud_p,*cloud_p, indices);
+
+  std::cerr << "PointCloud after removeNaN indices: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
 
   if (downsample)
   {
-    grid.setLeafSize (0.1, 0.1, 0.1);
+    grid.setLeafSize (0.07, 0.07, 0.07);
     grid.setInputCloud (cloud_p);
     grid.filter (*src);
 
+    grid.setLeafSize (0.01, 0.01, 0.01);
     grid.setInputCloud (cloud_tgt);
     grid.filter (*tgt);
+    //tgt = cloud_tgt;
   }
   else
   {
@@ -254,78 +227,51 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
     tgt = cloud_tgt;
   }
 
+  std::cerr << "PointCloud src after filtering: " << src->points.size() << " data points." << std::endl;
+  std::cerr << "PointCloud tgt after filtering: " << tgt->points.size() << " data points." << std::endl;
 
-  // Compute surface normals and curvature
-  PointCloudWithNormals::Ptr points_with_normals_src (new PointCloudWithNormals);
-  PointCloudWithNormals::Ptr points_with_normals_tgt (new PointCloudWithNormals);
 
-  pcl::NormalEstimation<PointT, PointNormalT> norm_est;
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
-  norm_est.setSearchMethod (tree);
-  norm_est.setKSearch (30);
-  
-  norm_est.setInputCloud (src);
-  norm_est.compute (*points_with_normals_src);
-  pcl::copyPointCloud (*src, *points_with_normals_src);
-
-  norm_est.setInputCloud (tgt);
-  norm_est.compute (*points_with_normals_tgt);
-  pcl::copyPointCloud (*tgt, *points_with_normals_tgt);
-
-  //
-  // Instantiate our custom point representation (defined above) ...
-  MyPointRepresentation point_representation;
-  // ... and weight the 'curvature' dimension so that it is balanced against x, y, and z
-  float alpha[4] = {1.0, 1.0, 1.0, 1.0};
-  point_representation.setRescaleValues (alpha);
-
-  //
   // Align
-  pcl::IterativeClosestPointNonLinear<PointNormalT, PointNormalT> reg;
+  pcl::IterativeClosestPoint<PointT, PointT> reg;
   reg.setTransformationEpsilon (1e-6);
   // Set the maximum distance between two correspondences (src<->tgt) to 10cm
   // Note: adjust this based on the size of your datasets
-  reg.setMaxCorrespondenceDistance (0.5);  
-  // Set the point representation
-  reg.setPointRepresentation (boost::make_shared<const MyPointRepresentation> (point_representation));
+  reg.setMaxCorrespondenceDistance (0.2);  
 
-  reg.setInputSource (points_with_normals_src);
-  reg.setInputTarget (points_with_normals_tgt);
+  reg.setInputSource (src);
+  reg.setInputTarget (tgt);
 
 
 
   //
   // Run the same optimization in a loop and visualize the results
   Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity (), prev, targetToSource;
-  PointCloudWithNormals::Ptr reg_result = points_with_normals_src;
-  reg.setMaximumIterations (30);
-  //for (int i = 0; i < 30; ++i)
-  //{
-    //PCL_INFO ("Iteration Nr. %d.\n", i);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr reg_result(new pcl::PointCloud<pcl::PointXYZ>);
+  reg.setMaximumIterations (50);
 
-    // save cloud for visualization purpose
-    //points_with_normals_src = reg_result;
-
+    // save cloud for visualization purpos
     // Estimate
-    //reg.setInputSource (points_with_normals_src);
+
   reg.align (*reg_result);
 
-		//accumulate transformation between each Iteration
+//accumulate transformation between each Iteration
   Ti = reg.getFinalTransformation () * Ti;
 
-		//if the difference between this transformation and the previous one
-		//is smaller than the threshold, refine the process by reducing
-		//the maximal correspondence distance
-    //if (fabs ((reg.getLastIncrementalTransformation () - prev).sum ()) < reg.getTransformationEpsilon ())
-     // reg.setMaxCorrespondenceDistance (reg.getMaxCorrespondenceDistance () - 0.001);
+//if the difference between this transformation and the previous one
+//is smaller than the threshold, refine the process by reducing
+//the maximal correspondence distance
+   // if (fabs ((reg.getLastIncrementalTransformation () - prev).sum ()) < reg.getTransformationEpsilon ())
+      //reg.setMaxCorrespondenceDistance (reg.getMaxCorrespondenceDistance () - 0.001);
     
     //prev = reg.getLastIncrementalTransformation ();
 
-    // visualize current state
-    showCloudsRight(points_with_normals_tgt, points_with_normals_src);
-  //}
 
-	//
+    // visualize current state
+    showCloudsRight(src, tgt);
+ // }
+
+  std::cout << "score: " <<reg.getFitnessScore() << std::endl; 
+
   // Get the transformation from target to source
   targetToSource = Ti.inverse();
 
@@ -338,9 +284,8 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
 
   PointCloudColorHandlerCustom<PointT> cloud_tgt_h (output, 0, 255, 0);
   PointCloudColorHandlerCustom<PointT> cloud_src_h (cloud_src, 255, 0, 0);
-  p->addPointCloud (output, cloud_tgt_h, "target", vp_2);
-  p->addPointCloud (cloud_src, cloud_src_h, "source", vp_2);
-
+  p->addPointCloud (reg_result, cloud_tgt_h, "target", vp_2);
+  p->addPointCloud (tgt, cloud_src_h, "source", vp_2);
 	PCL_INFO ("Press q to continue the registration.\n");
   p->spin ();
 
@@ -396,7 +341,7 @@ int main (int argc, char** argv)
     //update the global transform
     GlobalTransform = GlobalTransform * pairTransform;
 
-    std::cout << GlobalTransform << std::endl;
+    std::cout << "The final GlobalTransform is :" << GlobalTransform << std::endl;
 		//save aligned pair, transformed into the first cloud's frame
     std::stringstream ss;
     ss << i << ".pcd";
