@@ -1,6 +1,6 @@
 #include "icp_fusion_core.h"
 
-PointCloudFusion::PointCloudFusion(ros::NodeHandle &nh):icp_result(new pcl::PointCloud<pcl::PointXYZRGB>),counter(0),GlobalTransform(Eigen::Matrix4f::Identity()){
+PointCloudFusion::PointCloudFusion(ros::NodeHandle &nh):source_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),counter(0),GlobalTransform(Eigen::Matrix4f::Identity()){
 	
 //subscribe sensor_msgs::pointcloud2
 	sub_point_cloud_ = nh.subscribe("/iris_1/camera/depth/points", 10, &PointCloudFusion::point_cb, this);
@@ -26,22 +26,71 @@ void PointCloudFusion::publish_pointcloud(const ros::Publisher &in_publisher, co
 	in_publisher.publish(cloud_msg);
 }
 
-void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr in, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr out, pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp_out, Eigen::Matrix4f &final_transform)
+void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_src, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_tgt, pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp_out, Eigen::Matrix4f &final_transform)
 {
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_p(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr src(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr tgt(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+//Crop the cloud_src point cloud image
+        std::vector<int> index;
+
+        cloud_src->width = 640;
+        cloud_src->height = 480;
+
+        std::cout << "PointCloud src before filtering: " << cloud_src->points.size() << " data points." << std::endl;
+        std::cout << "PointCloud tgt before filtering: " << cloud_tgt->points.size() << " data points." << std::endl;
+
+        for( size_t i = 120; i < 360; ++i)
+           {
+	     for( size_t j = 160; j < 480; ++j)
+	        {
+	         index.push_back(i*640+j);
+                }
+           }
+
+        boost::shared_ptr<std::vector<int> > index_ptr = boost::make_shared<std::vector<int> >(index);
+//Create a split object
+        pcl::ExtractIndices<pcl::PointXYZRGB> extract;
+        extract.setInputCloud (cloud_src);
+        extract.setIndices (index_ptr);
+// The indices_rem array indexes all points of cloud_in that are indexed by indices_in
+        extract.setNegative (false);
+        extract.filter (*cloud_p);
+
+//Remove invalid points from NaNs
+  	std::vector<int> indices;
+ 	pcl::removeNaNFromPointCloud(*cloud_p,*cloud_p, indices);
+
+//use voxel to filter the pointcloud, which from the sensor_msgs::pointcloud2
+	pcl::VoxelGrid<pcl::PointXYZRGB> grid;
+
+        grid.setLeafSize (0.07f, 0.07f, 0.07f);
+        grid.setInputCloud (cloud_p);
+        grid.filter (*src);
+
+        grid.setLeafSize (0.01f, 0.01f, 0.01f);
+        grid.setInputCloud (cloud_tgt);
+        grid.filter (*tgt);
+	//tgt = cloud_tgt;
+
+  	std::cout << "PointCloud src after filtering: " << src->points.size() << " data points." << std::endl;
+  	std::cout << "PointCloud tgt after filtering: " << tgt->points.size() << " data points." << std::endl;
+
+
+
+
 //use ICP algorithm to fusion the point cloud 
 	pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> icp;
 //Set the convergence judgment condition. The smaller the smaller the precision, the slower the convergence.
 	icp.setTransformationEpsilon (1e-6);
-//Set the maximum distance between two correspondences (src<->tgt) to 10cm
-	icp.setMaxCorrespondenceDistance (0.1);
-//Difference between two iterations before and after
-	//icp.setEuclideanFitnessEpsilon (0.5);
+//Set the maximum distance between two correspondences (src<->tgt) to 20cm
+	icp.setMaxCorrespondenceDistance (0.2);
 //set the maximum number of iterations
-	icp.setMaximumIterations (50); 
-// Run the same optimization in a loop 
+	icp.setMaximumIterations (50);  
 	Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity (), prev, targetToSource;
-	icp.setInputSource (in);   // set source point cloud
-	icp.setInputTarget (out); //set target point cloud
+	icp.setInputSource (src);   
+	icp.setInputTarget (tgt); 
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr result(new pcl::PointCloud<pcl::PointXYZRGB>);
 	icp.align (*result);
@@ -53,21 +102,20 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 	targetToSource = Ti.inverse();
 
 // Transform target back in source frame
-	pcl::transformPointCloud (*out, *temp_out, targetToSource);
+	pcl::transformPointCloud (*cloud_tgt, *temp_out, targetToSource);
 
-	*temp_out += *in;
+	//*temp_out += *cloud_src;
 
 	final_transform = targetToSource;
 
-	//icp_result = result;
 	std::cout <<  " score: " << icp.getFitnessScore() << std::endl;
 }
 
 // call back the point cloud and filter it, then use ICP to fusion point cloud to generate map 
 void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_cloud){
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr target_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr filtered_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	//pcl::PointCloud<pcl::PointXYZRGB>::Ptr source_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp(new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -75,34 +123,35 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 
 	Eigen::Matrix4f pairTransform;
 // transform the pointcloud from ros type to pcl type
-	pcl::fromROSMsg(*input_cloud, *current_point_cloud);
+	pcl::fromROSMsg(*input_cloud, *target_point_cloud);
 
-
-//use voxel to filter the pointcloud, which from the sensor_msgs::pointcloud2
-	pcl::VoxelGrid<pcl::PointXYZRGB> vg;
-	vg.setInputCloud(current_point_cloud);
-	vg.setLeafSize(0.07f, 0.07f, 0.07f); 
-	vg.filter(*filtered_point_cloud);
 	
 	counter = counter + 1 ;
 
 	if(counter == 1)
 	{
-		icp_result = filtered_point_cloud; //save the first frame as the source frame
-		cout<<"has been processed"<<endl;
+//save the first frame as the source frame
+		source_point_cloud = target_point_cloud; 
+		cout<<"First Frame has been processed"<<endl;
 	}
 	else
 	{
-		point_cloud_fusion(icp_result, filtered_point_cloud, temp, pairTransform);
-//Convert the current point cloud temp after the registration to the global coordinate system and return result
+		point_cloud_fusion(source_point_cloud, target_point_cloud, temp, pairTransform);
+//Convert the current point cloud temp after the registration to the global coordinate system and return the result
 		pcl::transformPointCloud(*temp, *final_result, GlobalTransform);
-//Update the global transformation
+//Update global transformation
 		GlobalTransform = GlobalTransform * pairTransform; 
-		icp_result = filtered_point_cloud;  //save the last target as the next source
+		std::cout << "The final GlobalTransform is :" << GlobalTransform << std::endl;
+//save the last target as next source
+		source_point_cloud = target_point_cloud;  
 	}
-	if(counter % 4 == 0)
-	{
+
 	publish_pointcloud(pub_filtered_points_, final_result, input_cloud->header);
+
+	if(counter == 30)
+	{
+		std::cout << "Complete the fusion, the number of frames is 30, program is exited" << std::endl;
+		exit(1);
 	}
 	
 }
