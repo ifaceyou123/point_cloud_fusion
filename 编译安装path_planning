@@ -1,0 +1,34 @@
+ubuntu 16.04 和 ros-kinetic ：
+
+编译path_planning步骤：
+cd ~/catkin_ws/src
+git clone https://github.com/ayushgaud/path_planning.git
+cd ..
+catkin_make
+
+提示缺少FCL 等相关依赖，首先安装：
+sudo apt-get install build-essential cmake libccd-dev python-dev python-qt4-dev python-qt4-gl python-opengl freeglut3-dev libassimp-dev libeigen3-dev libode-dev doxygen graphviz git
+
+然后：
+git clone https://github.com/flexible-collision-library/fcl 
+cd fcl 
+git checkout fcl-0.5  #必须切换到这个branch；
+mkdir build 
+cd build 
+cmake .. 
+make 
+sudo make install
+
+若提示缺少boost：
+sudo apt-cache search boost
+然后安装 libboost-dev:
+sudo apt-get install libboost-dev
+
+提示缺少OMPL，安装 OMPL_ROS:
+sudo apt-get install ros-kinetic-ompl
+
+提示缺少octomap_msgs,octomap_ros,octomap_server, 安装：
+sudo apt-get install ros-kinetic-octomap ros-kinetic-octomap-mapping ros-kinetic-octomap-msgs ros-kinetic-octomap-ros ros-kinetic-octomap-rviz-plugins ros-kinetic-octomap-server
+
+提示/usr/bin/ld: cannot find -loctomap和/usr/bin/ld: cannot find -loctomath，安装：
+sudo apt install liboctomap-dev
