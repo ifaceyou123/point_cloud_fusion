@@ -146,11 +146,13 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 		source_point_cloud = target_point_cloud;  
 	}
 
-	publish_pointcloud(pub_filtered_points_, final_result, input_cloud->header);
-
-	if(counter == 30)
+	if(counter % 2 == 0)
+	{	
+		publish_pointcloud(pub_filtered_points_, final_result, input_cloud->header);
+	}
+	if(counter == 20)
 	{
-		std::cout << "Complete the fusion, the number of frames is 30, program is exited" << std::endl;
+		std::cout << "Complete the fusion, the number of frames is 20, program is exited" << std::endl;
 		exit(1);
 	}
 	
