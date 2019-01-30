@@ -1,0 +1,38 @@
+首先进入OMPL的官网http://ompl.kavrakilab.org/ ;
+点击Getting Started下的install OMPL;
+点击“Download the OMPL installation script”，会下载一个名为“install-ompl-ubuntu.sh”的文件;
+在install-ompl-ubuntu.sh的目录下，执行命令 chmod u+x install-ompl-ubuntu.sh 
+和./install-ompl-ubuntu.sh 
+
+ 
+
+
+
+or install step by step:
+
+安装依赖库
+
+sudo apt-get update -y
+sudo apt-get install -y libcdd-dev
+
+
+安装 libfcl
+
+cd ~ 
+git clone https://github.com/flexible-collision-library/fcl 
+cd fcl 
+mkdir build 
+cd build 
+cmake .. 
+make 
+sudo make install
+
+
+ubuntu16.04安装boost:
+	sudo apt-cache search boost
+
+安装  libboost-dev:
+	sudo apt-get install libboost-dev
+
+安装 OMPL_ROS
+sudo apt-get install ros-kinetic-ompl
