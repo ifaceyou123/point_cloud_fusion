@@ -12,7 +12,7 @@ How to created a MoveIt package for your articulated robot----------------------
 
 In the MoveIt setup assitant, try to load robot file, hier I try to load PX4 iris model:
 
-	0.cope the rotors_description from Fireware to ~/catkin_ws/src/
+	0.cope the rotors_description from Firmware to ~/catkin_ws/src/
 
 	1.Click on the "Create New MoveIt Configuration Package" button. 
 
@@ -70,15 +70,6 @@ And that's it! You have just created a MoveIt package for your articulated robot
 	10.launch the new file
 		cd ~/catkin_ws/src/irisdrone_moveit_config
 		roslaunch iris_moveit_config demo.launch
-
-
-
-
-
-
-
-
-
 
 
 
