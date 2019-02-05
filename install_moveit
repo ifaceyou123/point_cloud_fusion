@@ -11,6 +11,9 @@ Open the MoveIt Setup Assistant:
 How to created a MoveIt package for your articulated robot----------------------
 
 In the MoveIt setup assitant, try to load robot file, hier I try to load PX4 iris model:
+
+	0.cope the rotors_description from Fireware to ~/catkin_ws/src/
+
 	1.Click on the "Create New MoveIt Configuration Package" button. 
 
 	2.Now, just click the "Browse" button, select the Xacro file named "iris.xacro" located in the "~/src/Firmware/Tools/sitl_gazebo/models/rotors_description/urdf/iris.xacro" package, and Replace in xacro arguments: "--inorder" with "--inorder rotors_description_dir:=.. visual_material:=green" and click on the "Load Files" button. 
