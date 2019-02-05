@@ -28,13 +28,54 @@ In the MoveIt setup assitant, try to load robot file, hier I try to load PX4 iri
 
 	7.Next, you can skip directly to the "Author Information" tab. Here, just enter your name and e-mail.
 
-	8. Finally, go to the "Configuration Files" tab and click the "Browse" button. Navigate to the catkin_ws/src directory, create a new directory, and name it irisdrone_moveit_config. Choose the directory you've just created. Now, click the "Generate Package" button. 
+	8.Finally, go to the "Configuration Files" tab and click the "Browse" button. Navigate to the catkin_ws/src directory, create a new directory, and name it irisdrone_moveit_config. Choose the directory you've just created. Now, click the "Generate Package" button. 
+
+	9.What's more, you also need to add this two file to rotors_description,
+CMakeList.txt and package.xml.
+
+	CMakeList.txt : 
+		cmake_minimum_required(VERSION 2.8.3)
+		project(rotors_description)
+
+		find_package(catkin REQUIRED)
+
+		catkin_package()
+
+install(DIRECTORY meshes DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(DIRECTORY urdf DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+
+	package.xml :
+	    <?xml version="1.0"?>
+	    <package format="2">
+  		<name>rotors_description</name>
+  		<version>0.0.0</version>
+  		<description>The rotors_description package</description>
+
+  		<maintainer email="jiaxing@todo.todo">jiaxing</maintainer>
+  		<license>TODO</license>
+  		<buildtool_depend>catkin</buildtool_depend>
+  
+  		<export>
+    		<!-- Other tools can request additional information be placed here -->
+  		</export>
+	    </package>
+		
 
 
 And that's it! You have just created a MoveIt package for your articulated robot.
-
-	9.launch the new file
+	10.launch the new file
 		cd ~/catkin_ws/src/irisdrone_moveit_config
 		roslaunch iris_moveit_config demo.launch
+
+
+
+
+
+
+
+
+
+
 
 
