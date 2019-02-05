@@ -1,0 +1,40 @@
+install moveit ros in ubuntu16.04:
+	sudo apt-get install ros-kinetic-moveit-full
+
+Open the MoveIt Setup Assistant:
+	cd /opt/ros/kinetic/share/moveit_setup_assistant
+	roslaunch moveit_setup_assistant setup_assistant.launch
+
+
+
+
+How to created a MoveIt package for your articulated robot----------------------
+
+In the MoveIt setup assitant, try to load robot file, hier I try to load PX4 iris model:
+	1.Click on the "Create New MoveIt Configuration Package" button. 
+
+	2.Now, just click the "Browse" button, select the Xacro file named "iris.xacro" located in the "~/src/Firmware/Tools/sitl_gazebo/models/rotors_description/urdf/iris.xacro" package, and Replace in xacro arguments: "--inorder" with "--inorder rotors_description_dir:=.. visual_material:=green" and click on the "Load Files" button. 
+
+	3. Go to the "Self-Collisions" tab, and click on the "Regenerate Default Collision Matrix" button.
+(Here, you are just defining pairs of links that don't need to be considered when performing collision checking. For instance, because they are adjacent links, they will always be in collision.)
+
+	4.Next, move to the "Virtual Joints" tab. Here, you will define a virtual joint for the base of the robot. Click the "Add Virtual Joint" button, and set the name of this joint to "virtual_joint". The Child link will be "base_link", and the Parent frame will be "world". Also, set the Joint type to "floating". Finally, click the "Save" button.
+(Basically, what you are doing here is creating an "imaginary" joint that will connect the base of your robot to the simulated world. This virtual joint represents the motion of the base of the robot on a plane. This virtual joint will be a floating joint since the quadrotor is a multi degree-of-freedom object.)
+
+	5.Now, open the "Planning Groups" tab and click the "Add Group" button. Now,  create a new group called "irisdrone_group","none","0.005","0.005","3".
+	
+	6.Next, click on the "Add Joints" button, and you will add the virtual_joint. And then repeat the same process, except for Adding a link. In this case, you will add the "base_link". finally "save".
+(Planning groups are used for semantically describing different parts of the quadrotor, such as defining an end effector. For our quadrotor model, we don’t have an end effector, but we define a planning group named irisdrone_group, which contains the floating virtual_joint and the base_link. We can leave the kinematic solver set to none since we are treating the quadrotor as a simple single object.)
+
+	7.Next, you can skip directly to the "Author Information" tab. Here, just enter your name and e-mail.
+
+	8. Finally, go to the "Configuration Files" tab and click the "Browse" button. Navigate to the catkin_ws/src directory, create a new directory, and name it irisdrone_moveit_config. Choose the directory you've just created. Now, click the "Generate Package" button. 
+
+
+And that's it! You have just created a MoveIt package for your articulated robot.
+
+	9.launch the new file
+		cd ~/catkin_ws/src/irisdrone_moveit_config
+		roslaunch iris_moveit_config demo.launch
+
+
