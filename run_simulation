@@ -1,0 +1,29 @@
+run simulation:
+
+	1.run Firmware and launch the simulator:
+		source Tools/setup_gazebo.bash $(pwd) $(pwd)/build/posix_sitl_default
+		export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)
+		export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/sitl_gazebo
+
+		cd ~/src/Firmware
+		roslaunch px4 iris_depth_camera.launch 
+
+	2.run the control and takeoff iris drone:
+		cd ~/catkin_ws/src/offbord
+		rosrun offbord offbord_node
+
+	3.run octomap_mapping to receive the information from fusioned pointcloud map:
+		cd ~/catkin_ws/src/octomap_mapping/octomap_server
+		roslaunch octomap_server octomap_mapping.launch
+
+	4.run point_cloud_fusion file to generate pointcloud map:
+		cd ~/catkin_ws/src/point_cloud_fusion
+		roslaunch point_cloud_fusion point_cloud_fusion.launch
+
+	5.run moveIt and rviz to show the path_planning model:
+		cd ~/catkin_ws/src/irisdrone_moveit_config
+		roslaunch iris_moveit_config demo.launch
+
+	6.run load_octomap file to load octomap into moveit:
+		cd ~/catkin_ws/src/load_octomap
+		roslaunch load_octomap load_octomap.launch	
