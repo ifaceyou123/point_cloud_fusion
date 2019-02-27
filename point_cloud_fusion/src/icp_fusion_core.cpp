@@ -1,6 +1,7 @@
 #include "icp_fusion_core.h"
 
-PointCloudFusion::PointCloudFusion(ros::NodeHandle &nh):source_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),counter(0),GlobalTransform(Eigen::Matrix4f::Identity()){
+PointCloudFusion::PointCloudFusion(ros::NodeHandle &nh):source_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),counter(0),GlobalTransform(Eigen::Matrix4f::Identity()),
+transform(tf::StampedTransform()){
 	
 //subscribe sensor_msgs::pointcloud2
 	sub_point_cloud_ = nh.subscribe("/iris_1/camera/depth/points", 10, &PointCloudFusion::point_cb, this);
@@ -17,12 +18,13 @@ void PointCloudFusion::Spin(){
 
 }
 
-//publish different point cloud topic
-void PointCloudFusion::publish_pointcloud(const ros::Publisher &in_publisher, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_cloud_to_publish, const std_msgs::Header &in_header)
+//publish different point cloud topic             , const std_msgs::Header &in_header
+void PointCloudFusion::publish_pointcloud(const ros::Publisher &in_publisher, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_cloud_to_publish , const std_msgs::Header &in_header)
 {
 	sensor_msgs::PointCloud2 cloud_msg;
 	pcl::toROSMsg(*input_cloud_to_publish, cloud_msg);
 	cloud_msg.header = in_header;
+	cloud_msg.header.frame_id = "camera0";
 	in_publisher.publish(cloud_msg);
 }
 
@@ -31,6 +33,9 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_p(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr src(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr tgt(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+
+
 
 //Crop the cloud_src point cloud image
         std::vector<int> index;
@@ -65,7 +70,7 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 //use voxel to filter the pointcloud, which from the sensor_msgs::pointcloud2
 	pcl::VoxelGrid<pcl::PointXYZRGB> grid;
 
-        grid.setLeafSize (0.07f, 0.07f, 0.07f);
+        grid.setLeafSize (0.05f, 0.05f, 0.05f);
         grid.setInputCloud (cloud_p);
         grid.filter (*src);
 
@@ -111,6 +116,7 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 	std::cout <<  " score: " << icp.getFitnessScore() << std::endl;
 }
 
+
 // call back the point cloud and filter it, then use ICP to fusion point cloud to generate map 
 void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_cloud){
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr target_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -122,6 +128,8 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr final_result(new pcl::PointCloud<pcl::PointXYZRGB>);
 
 	Eigen::Matrix4f pairTransform;
+
+
 // transform the pointcloud from ros type to pcl type
 	pcl::fromROSMsg(*input_cloud, *target_point_cloud);
 
@@ -131,11 +139,57 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 	if(counter == 1)
 	{
 //save the first frame as the source frame
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr source_filtered_point(new pcl::PointCloud<pcl::PointXYZRGB>);
 		source_point_cloud = target_point_cloud; 
 		cout<<"First Frame has been processed"<<endl;
+//		pcl::VoxelGrid<pcl::PointXYZRGB> grid;
+
+//        	grid.setLeafSize (0.07f, 0.07f, 0.07f);
+//        	grid.setInputCloud (source_point_cloud);
+//        	grid.filter (*source_filtered_point);
+//		sensor_msgs::PointCloud2 first_frame_cloud;
+//		pcl::toROSMsg(*source_filtered_point, first_frame_cloud);
+
+//		tf::StampedTransform transform;
+		
+
+        	try {
+// Transform msg from camera frame to world frame
+   			ros::Time now = ros::Time::now();
+   			listener_.waitForTransform("map","iris_1/camera_link",  now, ros::Duration(5.0));
+
+//listener.lookupTransform(destination_frame, original_frame, ros::Time(0), transform)
+//save the Stampedtransform of tf from destination frame to original frame.
+    			listener_.lookupTransform("map","iris_1/camera_link",  now, transform);
+
+			
+
+
+//    			sensor_msgs::PointCloud2 transformed_msg;
+
+//Transform a sensor_msgs::PointCloud2 dataset from its frame to a given TF target frame.
+//    			pcl_ros::transformPointCloud("map", transform, first_frame_cloud, transformed_msg);
+
+//    			pcl::fromROSMsg(transformed_msg, *source_filtered_point);
+
+			//publish_pointcloud(pub_filtered_points_, source_filtered_point, input_cloud->header);
+			
+		}
+
+		catch (tf::TransformException const& ex) {
+    			ROS_ERROR("%s", ex.what());
+   			ROS_WARN("Transformation not available (/map to /camera_link)");
+ 		}
 	}
-	else
-	{
+
+//// Publish coordinate transformation ros::Time::now() is the timestamp carried by the conversion. Pass the name of the parent frame as camera0. The child frame is map.
+	tf::Quaternion q;
+	q.setRPY(-1.58, 0, -1.58);
+	transform.setRotation(q);
+	br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map","camera0"));
+
+	if(counter % 10 == 0)
+	{	
 		point_cloud_fusion(source_point_cloud, target_point_cloud, temp, pairTransform);
 //Convert the current point cloud temp after the registration to the global coordinate system and return the result
 		pcl::transformPointCloud(*temp, *final_result, GlobalTransform);
@@ -143,14 +197,13 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 		GlobalTransform = GlobalTransform * pairTransform; 
 		std::cout << "The final GlobalTransform is :" << GlobalTransform << std::endl;
 //save the last target as next source
-		source_point_cloud = target_point_cloud;  
+		source_point_cloud = target_point_cloud;  	
+
+		publish_pointcloud(pub_filtered_points_, final_result, input_cloud->header);
 	}
-
-	publish_pointcloud(pub_filtered_points_, final_result, input_cloud->header);
-
-	if(counter == 30)
+	if(counter == 100)
 	{
-		std::cout << "Complete the fusion, the number of frames is 30, program is exited" << std::endl;
+		std::cout << "Complete the fusion, the number of frames is 10, program is exited" << std::endl;
 		exit(1);
 	}
 	
