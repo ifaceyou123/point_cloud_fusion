@@ -11,13 +11,23 @@
 		<param name="resolution" value="0.05" />
 		
 		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
-		<param name="frame_id" type="string" value="base_link" />
+		<param name="frame_id" type="string" value="map" />
 		
 		<!-- maximum range to integrate (speedup!) -->
 		<param name="sensor_model/max_range" value="5.0" />
 		
-		<!-- data source to integrate (PointCloud2) -->
-		<remap from="cloud_in" to="/filtered_points" />
-	
+		<!-- data source to integrate (PointCloud2)
+		<remap from="cloud_in" to="/iris_1/camera/depth/points" />-->
+		<remap from="cloud_in" to="/filtered_points" /> 	
 	</node>
+
+<!-- Transformations for the camera and the world 
+       <node pkg="tf" type="static_transform_publisher" name="map_to_camera" args="0 0 0 -1.58 0 -1.58 camera0 camera0 100"/>-->
+	
+	 <!--<node pkg="tf" type="static_transform_publisher" name="world_to_map" args="0 0 0 0 0 0 map world 100"/>
+RViz -->
+    	<node pkg="rviz" type="rviz" output="screen" name="rviz" respawn="true" />
+
 </launch>
+
+
