@@ -1,0 +1,184 @@
+git clone https://github.com/PX4/Firmware.git
+git checkout v1.8.2
+
+
+1.when first time run the code,you will need to:
+echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+
+2.and then 
+make posix_sitl_default gazebo
+
+
+(if there is problem like "recipe for target 'platforms/posix/CMakeFiles/gazebo.dir/rule' failed",
+because it is fehlt gazebo simulator dependencies
+run "sudo apt-get install protobuf-compiler libeigen3-dev libopencv-dev -y")
+
+3.
+source Tools/setup_gazebo.bash $(pwd) $(pwd)/build/posix_sitl_default
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/sitl_gazebo
+
+
+4.test
+roslaunch px4 mavros_posix_sitl.launch
+
+
+5. 
+add depth_camera in iris urdf: in file /rotors_description/urdf/iris_base.xacro add
+  <!--Instantiate depth camera sensor-->
+  <xacro:vi_sensor_depth_macro
+    namespace="${namespace}"
+    parent_link="base_link"
+    camera_suffix=""
+    frame_rate="20.0"
+    >
+    <origin xyz="0.1 0 0.05" rpy="0 0 0" />
+  </xacro:vi_sensor_depth_macro>
+
+6.TF model in rviz: because the joint_state_publisher need the name: robot_description 
+add <param command="$(arg cmd)" name="robot_description"/> 
+in single_verhicle_spawn.launch
+
+7.write a roslaunch file for urdf run with name iris_depth_camera.launch
+add two launch commande:
+one for robot_state_publisher (all states to show)
+	<!---Joint_state_publisher-->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/>
+
+there for joint_state_publisher (imu joint)
+	<!--robot_state_publisher-->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+8. for the fixed frame problem we need to add following line in iris_base.xacro file 
+ <xacro:arg name='namespace' default='/iris_1' />
+
+and change 5. into 
+<xacro:vi_sensor_depth_macro
+    namespace="$(arg namespace)"  
+    parent_link="base_link"
+    camera_suffix=""
+    frame_rate="20.0"
+    >
+    <origin xyz="0.2 0 0.05" rpy="0 0 0" />
+  </xacro:vi_sensor_depth_macro>
+  <!-- and all of other namespace can not be changed -->
+
+8.8
+change send TF from flase to true, 
+/opt/ros/kinetic/share/mavros/launch/px4_config.yaml local_position: tf send = true
+
+9.      roslaunch px4 iris_depth_camera.launch
+10.     rosrun rviz rviz 
+
+11. takeoff 
+
+	cd catkin_ws/src
+	rosrun offbord offbord_node 
+
+
+( for IMU fixed frame:
+rosrun tf static_transform_publisher 0 0 0 0 0 0 0 base_link imu )
+
+
+
+11. run octomap_mapping
+
+	cd catkin_ws/src/octomap_mapping/octomap_server
+	roslaunch octomap_server octomap_mapping.launch 
+
+
+12. run point_cloud_fusion
+
+	cd catkin_ws/src/point_cloud_fusion
+	rosrun point_cloud_fusion point_cloud_fusion_node
+
+
+13. get frame_id
+
+	rostopic echo /scan |grep frame_id
+	(  Type: nav_msgs/Odometry   frame_id: "map" child_frame_id: "base_link" )
+
+////////About TF  https://my.oschina.net/sunzhiming/blog/408948   //////////////////////
+14. view_frames：图形化调试工具，可以产生当前tf tree的PDF.
+
+     例：$ rosrun tf view_frames && evince frames.pdf
+
+
+15. static_transform_publisher：静态tf发布器。
+
+     格式一：static_transform_publisher x y z yaw pitch roll frame_id child_frame_id period_in_ms
+
+           以周期period_in_ms发布frame_id到child_frame_id的偏移量为x y z yaw pitch roll的tf。
+
+     格式二：static_transform_publisher x y z qx qy qz qw frame_id child_frame_id  period_in_ms
+          
+          以周期period_in_ms发布frame_id到child_frame_id的偏移量为x y z qx qy qz qw的tf。
+     
+     static_transform_publisher在.launch文件中也可以使用：
+
+     例：<launch>
+              <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" 
+                    args="1 0 0 0 0 0 1 link1_parent link1 100" />
+         </launch>     
+
+16.（1）tf_monitor：打印当前坐标系tf树信息到控制台。
+   
+     格式：rosrun tf tf_monitor <source_frame> <target_target>
+
+     例：rosrun tf tf_monitor  //查看所有的tf
+
+     例：//查看/base_footprint坐标系到/odom坐标系的tf。 
+         rosrun tf tf_monitor /base_footprint /odom 
+
+   （2）tf_echo：打印出源坐标系到目标坐标系间的tf。
+    
+     格式：rosrun tf tf_echo <source_frame> <target_frame>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
