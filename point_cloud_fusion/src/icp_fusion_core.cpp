@@ -4,10 +4,10 @@ PointCloudFusion::PointCloudFusion(ros::NodeHandle &nh):source_point_cloud(new p
 transform(tf::StampedTransform()){
 	
 //subscribe sensor_msgs::pointcloud2
-	sub_point_cloud_ = nh.subscribe("/iris_1/camera/depth/points", 10, &PointCloudFusion::point_cb, this);
+	sub_point_cloud_ = nh.subscribe("/iris_1/camera/depth/points", 100, &PointCloudFusion::point_cb, this);
 
 //publish the filtered point cloud to ros
-	pub_filtered_points_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points", 10);
+	pub_filtered_points_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points", 50);
 
 	ros::spin();
 }
@@ -18,7 +18,7 @@ void PointCloudFusion::Spin(){
 
 }
 
-//publish different point cloud topic             , const std_msgs::Header &in_header
+//publish different point cloud topic, const std_msgs::Header &in_header
 void PointCloudFusion::publish_pointcloud(const ros::Publisher &in_publisher, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_cloud_to_publish , const std_msgs::Header &in_header)
 {
 	sensor_msgs::PointCloud2 cloud_msg;
@@ -33,6 +33,7 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_p(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr src(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr tgt(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr new_tgt(new pcl::PointCloud<pcl::PointXYZRGB>);
 
 
 
@@ -48,7 +49,7 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 
         for( size_t i = 120; i < 360; ++i)
            {
-	     for( size_t j = 160; j < 480; ++j)
+	     for( size_t j = 80; j < 560; ++j)
 	        {
 	         index.push_back(i*640+j);
                 }
@@ -70,7 +71,7 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 //use voxel to filter the pointcloud, which from the sensor_msgs::pointcloud2
 	pcl::VoxelGrid<pcl::PointXYZRGB> grid;
 
-        grid.setLeafSize (0.05f, 0.05f, 0.05f);
+        grid.setLeafSize (0.1f, 0.1f, 0.1f);
         grid.setInputCloud (cloud_p);
         grid.filter (*src);
 
@@ -87,12 +88,14 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 
 //use ICP algorithm to fusion the point cloud 
 	pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> icp;
-//Set the convergence judgment condition. The smaller the smaller the precision, the slower the convergence.
-	icp.setTransformationEpsilon (1e-6);
+//Set the convergence judgment condition. The smaller the precision, the slower the convergence.
+//it places a limit on the change in fitness score rather than the absolute score.
+	icp.setTransformationEpsilon (1e-10);
 //Set the maximum distance between two correspondences (src<->tgt) to 20cm
+	icp.setEuclideanFitnessEpsilon(0.00001);
 	icp.setMaxCorrespondenceDistance (0.2);
 //set the maximum number of iterations
-	icp.setMaximumIterations (50);  
+	icp.setMaximumIterations (100);  
 	Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity (), prev, targetToSource;
 	icp.setInputSource (src);   
 	icp.setInputTarget (tgt); 
@@ -107,12 +110,15 @@ void PointCloudFusion::point_cloud_fusion(const pcl::PointCloud<pcl::PointXYZRGB
 	targetToSource = Ti.inverse();
 
 // Transform target back in source frame
-	pcl::transformPointCloud (*cloud_tgt, *temp_out, targetToSource);
+	grid.setLeafSize (0.05f, 0.05f, 0.05f);
+        grid.setInputCloud (cloud_tgt);
+        grid.filter (*new_tgt);
+	pcl::transformPointCloud (*new_tgt, *temp_out, targetToSource);
 
 	//*temp_out += *cloud_src;
 
 	final_transform = targetToSource;
-
+//Obtain the Euclidean fitness score (e.g., sum of squared distances from the source to the target)
 	std::cout <<  " score: " << icp.getFitnessScore() << std::endl;
 }
 
@@ -139,14 +145,18 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 	if(counter == 1)
 	{
 //save the first frame as the source frame
+
+		ros::Time start_time = ros::Time::now();
+		std::cout<< "start_time: "<< start_time << std::endl;
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr source_filtered_point(new pcl::PointCloud<pcl::PointXYZRGB>);
 		source_point_cloud = target_point_cloud; 
 		cout<<"First Frame has been processed"<<endl;
 //		pcl::VoxelGrid<pcl::PointXYZRGB> grid;
 
-//        	grid.setLeafSize (0.07f, 0.07f, 0.07f);
+//        	grid.setLeafSize (0.05f, 0.05f, 0.05f);
 //        	grid.setInputCloud (source_point_cloud);
 //        	grid.filter (*source_filtered_point);
+//		publish_pointcloud(pub_filtered_points_, source_filtered_point, input_cloud->header);
 //		sensor_msgs::PointCloud2 first_frame_cloud;
 //		pcl::toROSMsg(*source_filtered_point, first_frame_cloud);
 
@@ -181,7 +191,7 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
    			ROS_WARN("Transformation not available (/map to /camera_link)");
  		}
 	}
-
+	//else{
 //// Publish coordinate transformation ros::Time::now() is the timestamp carried by the conversion. Pass the name of the parent frame as camera0. The child frame is map.
 	tf::Quaternion q;
 	q.setRPY(-1.58, 0, -1.58);
@@ -197,13 +207,19 @@ void PointCloudFusion::point_cb(const sensor_msgs::PointCloud2ConstPtr & input_c
 		GlobalTransform = GlobalTransform * pairTransform; 
 		std::cout << "The final GlobalTransform is :" << GlobalTransform << std::endl;
 //save the last target as next source
-		source_point_cloud = target_point_cloud;  	
+		source_point_cloud = target_point_cloud;  
 
 		publish_pointcloud(pub_filtered_points_, final_result, input_cloud->header);
+
 	}
+	//}
 	if(counter == 100)
 	{
+		ros::Time running_time = ros::Time::now();
+		//double average_time = 0.1*(running_time - start_time) ;
+		std::cout<< "Ending_time: "<< running_time <<std::endl;
 		std::cout << "Complete the fusion, the number of frames is 10, program is exited" << std::endl;
+		//sleep;
 		exit(1);
 	}
 	
