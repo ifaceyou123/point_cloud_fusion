@@ -109,12 +109,12 @@ public:
 		// set the bounds for the R^3 part of SE(3)
 		ob::RealVectorBounds bounds(3);
 
-		bounds.setLow(0,-20);
-		bounds.setHigh(0,20);
-		bounds.setLow(1,-20);
-		bounds.setHigh(1,20);
+		bounds.setLow(0,-10);
+		bounds.setHigh(0,10);
+		bounds.setLow(1,-10);
+		bounds.setHigh(1,10);
 		bounds.setLow(2,0);
-		bounds.setHigh(2,20);
+		bounds.setHigh(2,10);
 
 		space->as<ob::SE3StateSpace>()->setBounds(bounds);
 
@@ -194,7 +194,7 @@ public:
 		pdef->print(std::cout);
 
 	    // attempt to solve the problem within one second of planning time
-		ob::PlannerStatus solved = plan->solve(2);
+		ob::PlannerStatus solved = plan->solve(10);
 
 		if (solved)
 		{
@@ -232,11 +232,14 @@ public:
 				point_msg.transforms[0].translation.x= pos->values[0];
 				point_msg.transforms[0].translation.y = pos->values[1];
 				point_msg.transforms[0].translation.z = pos->values[2];
-
-				point_msg.transforms[0].rotation.x = rot->x;
-				point_msg.transforms[0].rotation.y = rot->y;
-				point_msg.transforms[0].rotation.z = rot->z;
-				point_msg.transforms[0].rotation.w = rot->w;
+				point_msg.transforms[0].rotation.x = 0;
+				point_msg.transforms[0].rotation.y = 0;
+				point_msg.transforms[0].rotation.z = 0;
+				point_msg.transforms[0].rotation.w = 0;
+				//point_msg.transforms[0].rotation.x = rot->x;
+				//point_msg.transforms[0].rotation.y = rot->y;
+				//point_msg.transforms[0].rotation.z = rot->z;
+				//point_msg.transforms[0].rotation.w = rot->w;
 
 				msg.points.push_back(point_msg);
 
@@ -248,7 +251,7 @@ public:
 
 			og::PathSimplifier* pathBSpline = new og::PathSimplifier(si);
 			path_smooth = new og::PathGeometric(dynamic_cast<const og::PathGeometric&>(*pdef->getSolutionPath()));
-			pathBSpline->smoothBSpline(*path_smooth,3);
+			pathBSpline->smoothBSpline(*path_smooth,5);
 			// std::cout << "Smoothed Path" << std::endl;
 			// path_smooth.print(std::cout);
 
@@ -279,10 +282,14 @@ public:
 				marker.pose.position.x = pos->values[0];
 				marker.pose.position.y = pos->values[1];
 				marker.pose.position.z = pos->values[2];
-				marker.pose.orientation.x = rot->x;
-				marker.pose.orientation.y = rot->y;
-				marker.pose.orientation.z = rot->z;
-				marker.pose.orientation.w = rot->w;
+				marker.pose.orientation.x = 0;
+				marker.pose.orientation.y = 0;
+				marker.pose.orientation.z = 0;
+				marker.pose.orientation.w = 0;
+				//marker.pose.orientation.x = rot->x;
+				//marker.pose.orientation.y = rot->y;
+				//marker.pose.orientation.z = rot->z;
+				//marker.pose.orientation.w = rot->w;
 				marker.scale.x = 0.15;
 				marker.scale.y = 0.15;
 				marker.scale.z = 0.15;
@@ -344,6 +351,7 @@ private:
 
 	    // check validity of state defined by pos & rot
 		fcl::Vec3f translation(pos->values[0],pos->values[1],pos->values[2]);
+		//fcl::Quaternion3f rotation(0, 0, 0, 0);
 		fcl::Quaternion3f rotation(rot->w, rot->x, rot->y, rot->z);
 		aircraftObject.setTransform(rotation, translation);
 		fcl::CollisionRequest requestType(1,false,1,false);

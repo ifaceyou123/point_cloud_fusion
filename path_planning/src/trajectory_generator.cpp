@@ -114,7 +114,7 @@ void trajCb(Eigen::MatrixXf coefficients, Eigen::MatrixXf waypoints)
 				else
 					break;
 			}
-			while(true)
+			while(idx_replan < n)
 			{
 				if(ros::Time::now().toSec() - time_start_replan.toSec() + planner_delay.toSec() > time(idx_replan))
 				{
